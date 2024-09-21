@@ -108,11 +108,26 @@ bool seff_coroutine_init_sized(
     k->resume_point.stack_top = stack_top;
 #endif
     k->resume_point.current_coroutine = k;
+#ifdef SEFF_ARCH_X86_64
     k->resume_point.rbx = (void *)0xcacabbbb;
     k->resume_point.r12 = (void *)0xcaca1212;
     k->resume_point.r13 = (void *)k;
     k->resume_point.r14 = (void *)arg;
     k->resume_point.r15 = (void *)fn;
+#elif defined(SEFF_ARCH_AARCH64)
+    k->resume_point.r19 = (void *)0xcaca1919;
+    k->resume_point.r20 = (void *)0xcaca2020;
+    k->resume_point.r21 = (void *)0xcaca2121;
+    k->resume_point.r22 = (void *)0xcaca2222;
+    k->resume_point.r23 = (void *)0xcaca2323;
+    k->resume_point.r24 = (void *)0xcaca2424;
+    k->resume_point.r25 = (void *)0xcaca2525;
+    k->resume_point.r26 = (void *)k;
+    k->resume_point.r27 = (void *)arg;
+    k->resume_point.r28 = (void *)fn;
+#else
+#error Architecture not supported in seff_coroutine_init_sized
+#endif
     k->state = PAUSED;
 
     /*
