@@ -225,7 +225,7 @@ coroutine_prelude:
     # At this point we are already at a new stack frame, we need to recover the CFA from rdi
     .cfi_escape DW_CFA_def_cfa_expression, 2, DW_OP_breg(DW_REG_aarch64_r26), seff_coroutine_t__resume_point
     # And then every other register from its offset to CFA
-    .cfi_offset pc, seff_cont_t__ip
+    .cfi_offset x30, seff_cont_t__ip
     .cfi_offset sp, seff_cont_t__rsp
     .cfi_offset x29, seff_cont_t__rbp
     .cfi_offset x19, seff_cont_t__r19
