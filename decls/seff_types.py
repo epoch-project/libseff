@@ -101,7 +101,6 @@ elif args.arch == aarch64:
         Field('r26', ptr(void)),
         Field('r27', ptr(void)),
         Field('r28', ptr(void)),
-        Field('lr', ptr(void)),
     ])
 else:
     print(f"Fatal error: unsupported architecture {args.arch}")

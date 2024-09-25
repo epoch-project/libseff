@@ -94,6 +94,7 @@ bool seff_coroutine_init_sized(
     seff_coroutine_t *k, seff_start_fun_t *fn, void *arg, size_t frame_size) {
     char *rsp;
     // Overhead needed by coroutine_prelude (since they make a call)
+    // TODO: architecture dependent?
     size_t overhead = 16;
     seff_frame_ptr_t stack = init_stack_frame(frame_size + overhead, &rsp);
     if (!stack) {

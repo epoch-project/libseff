@@ -16,9 +16,8 @@
 #include "dwarf.S"
 #include "seff_types.S"
 
-# TODO
 #ifdef STACK_POLICY_SEGMENTED
-#define SEFF_STACK_TOP %fs:0x70
+#error Segmented stacks not currently supported on AArch64
 #endif
 
 .global seff_exit
@@ -34,9 +33,6 @@
 .global _seff_current_coroutine
 .global _seff_system_stack
 .global _seff_paused_coroutine_stack
-#ifdef STACK_POLICY_SEGMENTED
-.global _seff_paused_coroutine_stack_top
-#endif
 
 .section .tbss
 
@@ -46,10 +42,6 @@ _seff_paused_coroutine_stack:
     .zero 8
 _seff_system_stack:
     .zero 8
-#ifdef STACK_POLICY_SEGMENTED
-_seff_paused_coroutine_stack_top:
-    .zero 8
-#endif
 
 .macro swap_registers
     # Saved registers
@@ -111,33 +103,20 @@ seff_yield:
 
     swap_registers
 
-    # We get to pummel %rax, %rcx, %r9, %r10, %r11, so we use those for fast swaps
-    # Note that xchg sucks
+    # We get to pummel x3-x15 so we use those for fast swaps
 
     mrs x9, TPIDR_EL0
 
-#ifdef STACK_POLICY_SEGMENTED
-    mov x3, SEFF_STACK_TOP
-#endif
     add x9, x9, :tprel_hi12:_seff_current_coroutine
     add x9, x9, :tprel_lo12_nc:_seff_current_coroutine
     # Keep x9 for later
     ldr x4, [x9]
 
-#ifdef STACK_POLICY_SEGMENTED
-    ldr x5, [x0, seff_coroutine_t__resume_point + seff_cont_t__stack_top]
-#endif
     ldr x6, [x0, seff_coroutine_t__parent_coroutine]
 
-#ifdef STACK_POLICY_SEGMENTED
-    mov SEFF_STACK_TOP, x5
-#endif
     # _seff_current_coroutine
     str x6, [x9]
 
-#ifdef STACK_POLICY_SEGMENTED
-    str x3, [x0, seff_coroutine_t__resume_point + seff_cont_t__stack_top]
-#endif
     str x4, [x0, seff_coroutine_t__resume_point + seff_cont_t__current_coroutine]
 
     # Save return pointer
@@ -163,31 +142,18 @@ seff_resume:
 
     swap_registers
 
-    # We get to pummel %rax, %rcx, %r9, %r10, %r11, so we use those for fast swaps
-    # Note that xchg sucks
+    # We get to pummel x3-x15 so we use those for fast swaps
 
     mrs x9, TPIDR_EL0
 
-#ifdef STACK_POLICY_SEGMENTED
-    mov x3, SEFF_STACK_TOP
-#endif
     add x10, x9, :tprel_hi12:_seff_current_coroutine
     add x10, x10, :tprel_lo12_nc:_seff_current_coroutine
     ldr x4, [x10]
 
-#ifdef STACK_POLICY_SEGMENTED
-    ldr x5, [x0, seff_coroutine_t__resume_point + seff_cont_t__stack_top]
-#endif
     ldr x6, [x0, seff_coroutine_t__resume_point + seff_cont_t__current_coroutine]
 
-#ifdef STACK_POLICY_SEGMENTED
-    mov SEFF_STACK_TOP, x5
-#endif
     str x6, [x10] /* _seff_current_coroutine */
 
-#ifdef STACK_POLICY_SEGMENTED
-    str x3, [x0, seff_coroutine_t__resume_point + seff_cont_t__stack_top]
-#endif
     str x4, [x0, seff_coroutine_t__parent_coroutine]
 
     # Save return pointer
@@ -197,7 +163,7 @@ seff_resume:
 
     # At this point, the stack is aligned on a 16-byte boundary, so we use
     # this as the system stack if possible. Note that we need to do this
-    # before clobbering RCX
+    # before clobbering x4
     cbnz x4, seff_resume_after_store_system_stack
     add x10, x9, :tprel_hi12:_seff_system_stack
     add x10, x10, :tprel_lo12_nc:_seff_system_stack
@@ -222,7 +188,7 @@ coroutine_prelude:
     # needed or else gdb does not allow switching frames to a lower address in the backtrace
     .cfi_signal_frame
 
-    # At this point we are already at a new stack frame, we need to recover the CFA from rdi
+    # At this point we are already at a new stack frame, we need to recover the CFA from x26
     .cfi_escape DW_CFA_def_cfa_expression, 2, DW_OP_breg(DW_REG_aarch64_r26), seff_coroutine_t__resume_point
     # And then every other register from its offset to CFA
     .cfi_offset x30, seff_cont_t__ip
@@ -240,14 +206,11 @@ coroutine_prelude:
     .cfi_offset x28, seff_cont_t__r28
 
     mov x0, x27
-    # Since rdi is a scratch register, from now our CFA relates to some position in memory
-    # Note that this instruction is executed when unwinding from below this line, with whatever $rdi
-    # has at that moment
+    # x26 is a callee-save register, so the debugger will continue to find the correct CFA
 
     blr x28
-    # FALLTHROUGH TO SEFF_RETURN
+    # FALLTHROUGH TO SEFF_EXIT
     # set the return value to (seff_result_t){ 0xFF...FF, %rax }
-    # TODO: there's a pushq %rax in the x86-64 version which appears spurious??
     mov x2, x0
     mov x0, x26
     mov x1, #RETURN_EFFECT_ID
@@ -266,10 +229,6 @@ seff_exit:
     # TODO: it would be faster to avoid swapping, since we're never restarting this coroutine
     swap_registers
 
-#ifdef STACK_POLICY_SEGMENTED
-    ldr x9, [x0, seff_coroutine_t__resume_point + seff_cont_t__stack_top]
-    mov SEFF_STACK_TOP, x9
-#endif
     ldr x9, [x0, seff_coroutine_t__parent_coroutine]
     mrs x10, TPIDR_EL0
     add x10, x10, :tprel_hi12:_seff_current_coroutine
@@ -295,8 +254,3 @@ seff_exit:
     br x9
     .cfi_endproc
 .size seff_exit, . - seff_exit
-
-# This notes indicate that this file was compiled with split stack
-#.section	.note.GNU-stack,"",@progbits
-#.section	.note.GNU-split-stack,"",@progbits
-#.section	.note.GNU-no-split-stack,"",@progbits
