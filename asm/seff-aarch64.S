@@ -26,23 +26,19 @@
 .global seff_resume
 .global coroutine_prelude
 
+#ifdef __APPLE__
+.global _seff_exit
+.global _seff_yield
+.global _seff_resume
+.global _coroutine_prelude
+#endif
+
+#ifndef __APPLE__
 .type seff_exit,%function
 .type seff_yield,%function
 .type seff_resume,%function
 .type coroutine_prelude,%function
-
-.global _seff_current_coroutine
-.global _seff_system_stack
-.global _seff_paused_coroutine_stack
-
-.section .tbss
-
-_seff_current_coroutine:
-    .zero 8
-_seff_paused_coroutine_stack:
-    .zero 8
-_seff_system_stack:
-    .zero 8
+#endif
 
 .macro swap_registers
     # Saved registers
@@ -96,6 +92,7 @@ _seff_system_stack:
 .text
 
 # void* seff_yield(seff_coroutine_t* self, void* arg)
+_seff_yield:
 seff_yield:
     .cfi_startproc
     # self in x0
@@ -106,10 +103,16 @@ seff_yield:
 
     # We get to pummel x3-x15 so we use those for fast swaps
 
+#ifdef __APPLE__
+    adrp x9, _seff_current_coroutine@TLVPPAGE
+    ldr  x9, [x9, _seff_current_coroutine@TLVPPAGEOFF]
+#else
     mrs x9, TPIDR_EL0
 
     add x9, x9, :tprel_hi12:_seff_current_coroutine
     add x9, x9, :tprel_lo12_nc:_seff_current_coroutine
+#endif
+
     # Keep x9 for later
     ldr x4, [x9]
 
@@ -131,9 +134,12 @@ seff_yield:
     mov x1, x2
     ret
     .cfi_endproc
+#ifndef __APPLE__
 .size seff_yield, . - seff_yield
+#endif
 
 # void* seff_resume(seff_coroutine_t* k, void* arg, effect_set handled)
+_seff_resume:
 seff_resume:
     .cfi_startproc
     # k in x0
@@ -145,10 +151,15 @@ seff_resume:
 
     # We get to pummel x3-x15 so we use those for fast swaps
 
+#ifdef __APPLE__
+    adrp x10, _seff_current_coroutine@TLVPPAGE
+    ldr  x10, [x10, _seff_current_coroutine@TLVPPAGEOFF]
+#else
     mrs x9, TPIDR_EL0
 
     add x10, x9, :tprel_hi12:_seff_current_coroutine
     add x10, x10, :tprel_lo12_nc:_seff_current_coroutine
+#endif
     ldr x4, [x10]
 
     ldr x6, [x0, seff_coroutine_t__resume_point + seff_cont_t__current_coroutine]
@@ -166,8 +177,13 @@ seff_resume:
     # this as the system stack if possible. Note that we need to do this
     # before clobbering x4
     cbnz x4, seff_resume_after_store_system_stack
+#ifdef __APPLE__
+    adrp x10, _seff_system_stack@TLVPPAGE
+    ldr  x10, [x10, _seff_system_stack@TLVPPAGEOFF]
+#else
     add x10, x9, :tprel_hi12:_seff_system_stack
     add x10, x10, :tprel_lo12_nc:_seff_system_stack
+#endif
     mov x11, sp
     str x11, [x10]
 seff_resume_after_store_system_stack:
@@ -178,12 +194,15 @@ seff_resume_after_store_system_stack:
     mov x0, x1
     ret
     .cfi_endproc
+#ifndef __APPLE__
 .size seff_resume, . - seff_resume
+#endif
 
 # void coroutine_prelude(seff_coroutine_t *k, seff_start_fun_t *fn, void *arg);
 # k in x26
 # arg in x27
 # fn in x28
+_coroutine_prelude:
 coroutine_prelude:
     .cfi_startproc
     # needed or else gdb does not allow switching frames to a lower address in the backtrace
@@ -216,9 +235,12 @@ coroutine_prelude:
     mov x0, x26
     mov x1, #RETURN_EFFECT_ID
     .cfi_endproc
+#ifndef __APPLE__
 .size coroutine_prelude, . - coroutine_prelude
+#endif
 
 # void seff_exit(seff_coroutine_t* k, void* result)
+_seff_exit:
 seff_exit:
     .cfi_startproc
     # k in x0
@@ -231,9 +253,14 @@ seff_exit:
     swap_registers
 
     ldr x9, [x0, seff_coroutine_t__parent_coroutine]
+#ifdef __APPLE__
+    adrp x10, _seff_current_coroutine@TLVPPAGE
+    ldr  x10, [x10, _seff_current_coroutine@TLVPPAGEOFF]
+#else
     mrs x10, TPIDR_EL0
     add x10, x10, :tprel_hi12:_seff_current_coroutine
     add x10, x10, :tprel_lo12_nc:_seff_current_coroutine
+#endif
     str x9, [x10]
 
     ldr x9, [x0, seff_coroutine_t__resume_point + seff_cont_t__ip]
@@ -254,4 +281,6 @@ seff_exit:
     mov x1, x2
     br x9
     .cfi_endproc
+#ifndef __APPLE__
 .size seff_exit, . - seff_exit
+#endif

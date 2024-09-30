@@ -30,7 +30,9 @@
 #define DEBUG_INFO(fmt, ...)
 #endif
 
-extern __thread seff_coroutine_t *_seff_current_coroutine;
+__thread seff_coroutine_t *_seff_current_coroutine = 0;
+__thread void *_seff_system_stack = 0;
+__thread void *_seff_paused_coroutine_stack = 0;
 
 seff_request_t seff_resume_handling_all(seff_coroutine_t *k, void *arg) {
     return seff_resume(k, arg, ~0);

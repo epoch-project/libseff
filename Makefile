@@ -12,11 +12,11 @@
 #
 
 BUILD        := debug
-STACK_POLICY := segmented
-ARCH         := x86-64
+STACK_POLICY := fixed
+ARCH         := aarch64
 
-CC  := clang-10
-CXX := clang++-10
+CC  := clang
+CXX := clang++
 PY  := python3
 LD  := $(shell which ld.gold)
 
