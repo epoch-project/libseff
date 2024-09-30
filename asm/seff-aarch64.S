@@ -104,8 +104,8 @@ seff_yield:
     # We get to pummel x3-x15 so we use those for fast swaps
 
 #ifdef __APPLE__
-    adrp x9, _seff_current_coroutine@TLVPPAGE
-    ldr  x9, [x9, _seff_current_coroutine@TLVPPAGEOFF]
+    adrp x9, __seff_current_coroutine@TLVPPAGE
+    ldr  x9, [x9, __seff_current_coroutine@TLVPPAGEOFF]
 #else
     mrs x9, TPIDR_EL0
 
@@ -152,8 +152,8 @@ seff_resume:
     # We get to pummel x3-x15 so we use those for fast swaps
 
 #ifdef __APPLE__
-    adrp x10, _seff_current_coroutine@TLVPPAGE
-    ldr  x10, [x10, _seff_current_coroutine@TLVPPAGEOFF]
+    adrp x10, __seff_current_coroutine@TLVPPAGE
+    ldr  x10, [x10, __seff_current_coroutine@TLVPPAGEOFF]
 #else
     mrs x9, TPIDR_EL0
 
@@ -178,8 +178,8 @@ seff_resume:
     # before clobbering x4
     cbnz x4, seff_resume_after_store_system_stack
 #ifdef __APPLE__
-    adrp x10, _seff_system_stack@TLVPPAGE
-    ldr  x10, [x10, _seff_system_stack@TLVPPAGEOFF]
+    adrp x10, __seff_system_stack@TLVPPAGE
+    ldr  x10, [x10, __seff_system_stack@TLVPPAGEOFF]
 #else
     add x10, x9, :tprel_hi12:_seff_system_stack
     add x10, x10, :tprel_lo12_nc:_seff_system_stack
@@ -254,8 +254,8 @@ seff_exit:
 
     ldr x9, [x0, seff_coroutine_t__parent_coroutine]
 #ifdef __APPLE__
-    adrp x10, _seff_current_coroutine@TLVPPAGE
-    ldr  x10, [x10, _seff_current_coroutine@TLVPPAGEOFF]
+    adrp x10, __seff_current_coroutine@TLVPPAGE
+    ldr  x10, [x10, __seff_current_coroutine@TLVPPAGEOFF]
 #else
     mrs x10, TPIDR_EL0
     add x10, x10, :tprel_hi12:_seff_current_coroutine
