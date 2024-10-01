@@ -43,9 +43,19 @@ __attribute__((no_split_stack)) int get_errno() {
 }
 
 MAKE_SYSCALL_WRAPPER(int, get_errno);
-MAKE_SYSCALL_WRAPPER(int, accept4, int, void *, void *, int);
+MAKE_SYSCALL_WRAPPER(int, accept, int, void *, void *);
+MAKE_SYSCALL_WRAPPER(int, fcntl, int, int, ...);
 MAKE_SYSCALL_WRAPPER(int, recv, int, void *, size_t, int);
 MAKE_SYSCALL_WRAPPER(int, send, int, const void *, size_t, int);
+
+static int set_nonblock(int socket_fd) {
+    int flags = fcntl(socket_fd, F_GETFL);
+    if (flags >= 0) return fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+    return flags;
+}
+
+MAKE_SYSCALL_WRAPPER(int, set_nonblock, int);
+
 
 int listen_tcp_socket(const char *ip, const char *port, bool non_blocking, bool reuse_address,
     bool reuse_port, int listen_queue_size) {
@@ -71,13 +81,13 @@ int listen_tcp_socket(const char *ip, const char *port, bool non_blocking, bool 
 
     // Try to bind to all of them
     for (p = ai; p != NULL; p = p->ai_next) {
-        listener = socket(
-            p->ai_family, p->ai_socktype | (non_blocking ? SOCK_NONBLOCK : 0), p->ai_protocol);
+        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (listener < 0) {
             deb_log("Failure to create socket with family: %d, type: %d, protocol: %d\n",
-                p->ai_family, p->ai_socktype | (non_blocking ? SOCK_NONBLOCK : 0), p->ai_protocol);
+                p->ai_family, p->ai_socktype, p->ai_protocol);
             continue;
         }
+        if (non_blocking) set_nonblock(listener);
 
         if (reuse_address) {
             deb_log("Reusing address\n");
@@ -149,16 +159,17 @@ int await_accept4(int socket_fd) {
 #ifndef NDEBUG
     // TODO assert that the socket is non blocking
 #endif
-    int n_read = accept4_syscall_wrapper(socket_fd, NULL, NULL, SOCK_NONBLOCK);
-    if (n_read >= 0) {
+    int new_fd = accept_syscall_wrapper(socket_fd, NULL, NULL);
+    if (new_fd >= 0) {
         // accept succesful (happy path)
-        return n_read;
+        int r = set_nonblock_syscall_wrapper(new_fd);
+        return (r != -1 ? new_fd : r);
     } else {
         int err = get_errno_syscall_wrapper();
         if (err != EAGAIN && err != EWOULDBLOCK) {
             // No point in waiting, something else made it fail
-            deb_log("Call to accept4 failed! returning error\n");
-            return n_read;
+            deb_log("Call to accept failed! returning error\n");
+            return new_fd;
         }
     }
 
@@ -170,7 +181,13 @@ int await_accept4(int socket_fd) {
         return -1;
 
     // There must be something here
-    return accept4_syscall_wrapper(socket_fd, NULL, NULL, SOCK_NONBLOCK);
+    new_fd = accept_syscall_wrapper(socket_fd, NULL, NULL);
+    if (new_fd >= 0) {
+        int r = set_nonblock_syscall_wrapper(new_fd);
+        return (r != -1 ? new_fd : r);
+    } else {
+        return new_fd;
+    }
 }
 
 int await_recv(int conn_fd, char *buffer, size_t bufsz) {
