@@ -28,21 +28,29 @@ def unsized_named_ty(name):
 #  A sized type
 class Ty(UnsizedTy):
     size: int
-    def __init__(self, declare: typing.Callable[[str], str], size: int):
+    def __init__(self, declare: typing.Callable[[str], str], size: int, align = None):
+        if align is None:
+            align = size
         self.size = size
+        self.align = align
         super().__init__(declare)
 
-def named_ty(name, size):
-    return Ty(lambda s: f'{name} {s}', size)
+def named_ty(name, size, align = None):
+    return Ty(lambda s: f'{name} {s}', size, align)
 
 class Architecture:
     word_type: "Ty"
     size_t: "Ty"
-    def __init__(self, bits: int):
+    ptr_type: "ty"
+    def __init__(self, bits: int, ptr_bits = None):
+        if ptr_bits is None:
+            ptr_bits = bits
         assert(int(bits/8) == bits/8)
+        assert(int(ptr_bits/8) == ptr_bits/8)
         self.word_type = named_ty(f'uint{bits}_t', int(bits/8))
         self.half_word_type = named_ty(f'uint{bits//2}_t', int(bits/16))
         self.size_t = named_ty('size_t', int(bits/8))
+        self.ptr_type = named_ty(f'uintptr_t', int(ptr_bits/8))
 
 arch = None
 
@@ -119,11 +127,15 @@ class Struct:
         self.size = 0
         offset = 0
         for field in self.fields:
+            # Align by field size
+            if offset % field.ty.align != 0:
+                offset += field.ty.align - offset % field.ty.align
             field.parent = self
             field.offset = offset
             offset += field.ty.size
         self.size = offset
-        self.ty = named_ty(f'{self.name}', self.size)
+        # TODO: align is *not* 1
+        self.ty = named_ty(f'{self.name}', self.size, 1)
 
     def c_str(self):
         lines = ["typedef struct _" + self.name + " {"]
@@ -213,10 +225,10 @@ byte = named_ty('uint8_t', 1)
 void = named_ty('void', 0)
 
 def ptr(ty: UnsizedTy):
-    return Ty(lambda s: ty.declare('*'+s), arch.word_type.size)
+    return Ty(lambda s: ty.declare('*'+s), arch.ptr_type.size, arch.ptr_type.align)
 
 def arr(ty: Ty, size: int):
-    return Ty(lambda s: ty.declare(s+f'[{size}]'), size * ty.size)
+    return Ty(lambda s: ty.declare(s+f'[{size}]'), size * ty.size, ty.align)
 
 def func(args: typing.List[Ty], ret: Ty):
     args_str = '('
@@ -225,10 +237,10 @@ def func(args: typing.List[Ty], ret: Ty):
         if i < len(args)-1:
             args_str += ', '
     args_str += ')'
-    return Ty(lambda s: ret.declare(s + args_str), 0)
+    return Ty(lambda s: ret.declare(s + args_str), 1)
 
 def atomic(ty: Ty):
-    return Ty(lambda s: '_Atomic ' + ty.declare(s), ty.size)
+    return Ty(lambda s: '_Atomic ' + ty.declare(s), ty.size, ty.align)
 
 def generate_file(path_str):
     import os

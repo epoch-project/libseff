@@ -115,7 +115,7 @@ bool seff_coroutine_init_sized(
     k->resume_point.r13 = (void *)k;
     k->resume_point.r14 = (void *)arg;
     k->resume_point.r15 = (void *)fn;
-#elif defined(SEFF_ARCH_AARCH64)
+#elif defined(SEFF_ARCH_AARCH64) || defined(SEFF_ARCH_MORELLO)
     k->resume_point.r19 = (void *)0xcaca1919;
     k->resume_point.r20 = (void *)0xcaca2020;
     k->resume_point.r21 = (void *)0xcaca2121;

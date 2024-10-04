@@ -21,7 +21,8 @@ parser = argparse.ArgumentParser()
 
 x86_64 = 'x86-64'
 aarch64 = 'aarch64'
-parser.add_argument('--arch', choices=[x86_64, aarch64], default=x86_64)
+morello = 'morello'
+parser.add_argument('--arch', choices=[x86_64, aarch64, morello], default=x86_64)
 
 segmented = 'segmented'
 fixed = 'fixed'
@@ -44,6 +45,10 @@ elif args.arch == aarch64:
     arch = Architecture(64)
     generate.arch = arch
     Defn('SEFF_ARCH_AARCH64')
+elif args.arch == morello:
+    arch = Architecture(64, 128)
+    generate.arch = arch
+    Defn('SEFF_ARCH_MORELLO')
 else:
     print(f"Fatal error: unsupported architecture {args.arch}")
     exit()
@@ -89,7 +94,7 @@ if args.arch == x86_64:
         Field('r14', ptr(void)),
         Field('r15', ptr(void)),
     ])
-elif args.arch == aarch64:
+elif args.arch == aarch64 or args.arch == morello:
     cont_fields.extend([
         Field('r19', ptr(void)),
         Field('r20', ptr(void)),
