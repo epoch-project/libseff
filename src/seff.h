@@ -98,10 +98,17 @@ E __attribute__((noreturn)) void seff_throw(effect_id eff_id, void *payload);
                             "") "movq %rcx, %fs:0x70;"                                            \
                                 "retq;")
 #elif defined(SEFF_ARCH_AARCH64)
+#ifdef __APPLE__
 #define MAKE_SYSCALL_WRAPPER(ret, fn, ...)                                                        \
-    ret __attribute__((no_split_stack)) fn##_syscall_wrapper(__VA_ARGS__);                        \
+    ret fn##_syscall_wrapper(__VA_ARGS__);                        \
+    __asm__("_" #fn "_syscall_wrapper:"                                                               \
+                "b _" #fn)
+#else
+#define MAKE_SYSCALL_WRAPPER(ret, fn, ...)                                                        \
+    ret fn##_syscall_wrapper(__VA_ARGS__);                        \
     __asm__(#fn "_syscall_wrapper:"                                                               \
                 "b " #fn)
+#endif
 #else
 #error Architecture not supported for MAKE_SYSCALL_WRAPPER
 #endif
