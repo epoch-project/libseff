@@ -23,6 +23,8 @@ jobs:
     - name: check test binary file
       run: file output/tests/simple
     - name: run tests
+      env: 
+        LIBSEFF_DEFAULT_FRAME_SIZE: "1000000"
       run: |
         ./output/tests/simple
         ./output/tests/coroutine_multi
