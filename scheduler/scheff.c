@@ -75,7 +75,11 @@ void scheff_wake_all(size_t n_wakers, scheff_waker_t **wakers, bool resume) {
     PERFORM(wake, n_wakers, wakers, resume);
 }
 
+#ifdef STACK_POLICY_FIXED
+#define STACK_SIZE 8192
+#else
 #define STACK_SIZE 512
+#endif
 #define INITIAL_QUEUE_LOG_SIZE 3
 
 #ifndef NDEBUG
