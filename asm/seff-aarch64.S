@@ -105,12 +105,14 @@ seff_yield:
 
 #ifdef __APPLE__
     mov x3, x0
+    mov x4, lr
     adrp x0, __seff_current_coroutine@TLVPPAGE
     ldr  x0, [x0, __seff_current_coroutine@TLVPPAGEOFF]
     ldr x10, [x0]
     blr x10
     mov x9, x0
     mov x0, x3
+    mov lr, x4
 #else
     mrs x9, TPIDR_EL0
 
@@ -158,12 +160,14 @@ seff_resume:
 
 #ifdef __APPLE__
     mov x3, x0
+    mov x4, lr
     adrp x0, __seff_current_coroutine@TLVPPAGE
     ldr  x0, [x0, __seff_current_coroutine@TLVPPAGEOFF]
     ldr x9, [x0]
     blr x9
     mov x10, x0
     mov x0, x3
+    mov lr, x4
 #else
     mrs x9, TPIDR_EL0
 
@@ -189,12 +193,14 @@ seff_resume:
     cbnz x4, seff_resume_after_store_system_stack
 #ifdef __APPLE__
     mov x3, x0
+    mov x4, lr
     adrp x0, __seff_system_stack@TLVPPAGE
     ldr  x0, [x0, __seff_system_stack@TLVPPAGEOFF]
     ldr x10, [x0]
     blr x10
     mov x10, x0
     mov x0, x3
+    mov lr, x4
 #else
     add x10, x9, :tprel_hi12:_seff_system_stack
     add x10, x10, :tprel_lo12_nc:_seff_system_stack
@@ -270,12 +276,14 @@ seff_exit:
     ldr x9, [x0, seff_coroutine_t__parent_coroutine]
 #ifdef __APPLE__
     mov x3, x0
+    mov x4, lr
     adrp x0, __seff_current_coroutine@TLVPPAGE
     ldr  x0, [x0, __seff_current_coroutine@TLVPPAGEOFF]
     ldr  x10, [x0]
     blr x10
     mov x10, x0
     mov x0, x3
+    mov lr, x4
 #else
     mrs x10, TPIDR_EL0
     add x10, x10, :tprel_hi12:_seff_current_coroutine
