@@ -188,11 +188,13 @@ seff_resume:
     # before clobbering x4
     cbnz x4, seff_resume_after_store_system_stack
 #ifdef __APPLE__
+    mov x3, x0
     adrp x0, __seff_system_stack@TLVPPAGE
     ldr  x0, [x0, __seff_system_stack@TLVPPAGEOFF]
     ldr x10, [x0]
     blr x10
     mov x10, x0
+    mov x0, x3
 #else
     add x10, x9, :tprel_hi12:_seff_system_stack
     add x10, x10, :tprel_lo12_nc:_seff_system_stack
