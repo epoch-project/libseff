@@ -22,6 +22,11 @@ jobs:
         path: output/tests/simple
     - name: check test binary file
       run: file output/tests/simple
-    - name: run simple test
-      run: ./output/tests/simple
+    - name: run tests
+      run: |
+        ./output/tests/simple
+        ./output/tests/coroutine_multi
+        ./output/tests/ad
+        ./output/tests/fibonacci_generator
+        ./output/tests/test_actors
 
