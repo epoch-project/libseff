@@ -5,7 +5,11 @@
 #include <string.h>
 
 void *fn(void *arg);
+#ifdef __APPLE__
+__asm__("_fn:"
+#else
 __asm__("fn:"
+#endif
 #ifdef SEFF_ARCH_X86_64
         "movq %rsp, %rax;"
 #else
