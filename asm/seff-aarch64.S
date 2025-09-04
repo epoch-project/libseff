@@ -98,6 +98,7 @@ _seff_system_stack:
 # void* seff_yield(seff_coroutine_t* self, void* arg)
 seff_yield:
     .cfi_startproc
+    bti c
     # self in x0
     # arg1 in x1
     # arg2 in x2
@@ -136,6 +137,7 @@ seff_yield:
 # void* seff_resume(seff_coroutine_t* k, void* arg, effect_set handled)
 seff_resume:
     .cfi_startproc
+    bti c
     # k in x0
     # arg in x1
     # handled in x2
@@ -206,6 +208,7 @@ coroutine_prelude:
     .cfi_offset x27, seff_cont_t__r27
     .cfi_offset x28, seff_cont_t__r28
 
+    bti c
     mov x0, x27
     # x26 is a callee-save register, so the debugger will continue to find the correct CFA
 
@@ -221,6 +224,7 @@ coroutine_prelude:
 # void seff_exit(seff_coroutine_t* k, void* result)
 seff_exit:
     .cfi_startproc
+    bti c
     # k in x0
     # eff_id in x1
     # result in x2
@@ -252,6 +256,18 @@ seff_exit:
 
     mov x0, x1
     mov x1, x2
-    br x9
+    ret x9 /* not a branch because the target might not have a bti landing pad instruction */
     .cfi_endproc
 .size seff_exit, . - seff_exit
+
+    .pushsection .note.gnu.property, "a"; /* Start a new allocatable section */
+    .balign 8; /* align it on a byte boundry */
+    .long 4; /* size of "GNU\0" */
+    .long 0x10; /* size of descriptor */
+    .long 0x5; /* NT_GNU_PROPERTY_TYPE_0 */
+    .asciz "GNU";
+    .long 0xc0000000; /* GNU_PROPERTY_AARCH64_FEATURE_1_AND */
+    .long 4; /* Four bytes of data */
+    .long 1; /* BTI is enabled */
+    .long 0; /* padding for 8 byte alignment */
+    .popsection; /* end the section */

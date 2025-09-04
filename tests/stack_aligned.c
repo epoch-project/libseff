@@ -9,6 +9,7 @@ __asm__("fn:"
 #ifdef SEFF_ARCH_X86_64
         "movq %rsp, %rax;"
 #else
+	"bti c;"
         "mov x0, sp;"
 #endif
         "ret;");
