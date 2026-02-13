@@ -24,11 +24,13 @@
 .global seff_exit
 .global seff_yield
 .global seff_resume
+.global prepare_ip
 .global coroutine_prelude
 
 .type seff_exit,%function
 .type seff_yield,%function
 .type seff_resume,%function
+.type prepare_ip,%function
 .type coroutine_prelude,%function
 
 .global _seff_current_coroutine
@@ -98,7 +100,7 @@ _seff_system_stack:
 # void* seff_yield(seff_coroutine_t* self, void* arg)
 seff_yield:
     .cfi_startproc
-    bti c
+    paciasp
     # self in x0
     # arg1 in x1
     # arg2 in x2
@@ -130,6 +132,7 @@ seff_yield:
 
     mov x0, x1
     mov x1, x2
+    autiasp
     ret
     .cfi_endproc
 .size seff_yield, . - seff_yield
@@ -137,7 +140,7 @@ seff_yield:
 # void* seff_resume(seff_coroutine_t* k, void* arg, effect_set handled)
 seff_resume:
     .cfi_startproc
-    bti c
+    paciasp
     # k in x0
     # arg in x1
     # handled in x2
@@ -178,9 +181,20 @@ seff_resume_after_store_system_stack:
     swap_stack
 
     mov x0, x1
+    autiasp
     ret
     .cfi_endproc
 .size seff_resume, . - seff_resume
+
+prepare_ip:
+    .cfi_startproc
+    mov x17, x0
+    mov x16, x1
+    pacia1716
+    mov x0, x17
+    ret
+    .cfi_endproc
+.size prepare_ip, . - prepare_ip
 
 # void coroutine_prelude(seff_coroutine_t *k, seff_start_fun_t *fn, void *arg);
 # k in x26
@@ -240,7 +254,7 @@ seff_exit:
     add x10, x10, :tprel_lo12_nc:_seff_current_coroutine
     str x9, [x10]
 
-    ldr x9, [x0, seff_coroutine_t__resume_point + seff_cont_t__ip]
+    ldr x30, [x0, seff_coroutine_t__resume_point + seff_cont_t__ip]
 
     ldr x29, [x0, seff_coroutine_t__resume_point + seff_cont_t__rbp]
     ldr x10, [x0, seff_coroutine_t__resume_point + seff_cont_t__rsp]
@@ -256,7 +270,8 @@ seff_exit:
 
     mov x0, x1
     mov x1, x2
-    ret x9 /* not a branch because the target might not have a bti landing pad instruction */
+    autiasp
+    ret /* not a branch because the target might not have a bti landing pad instruction */
     .cfi_endproc
 .size seff_exit, . - seff_exit
 
@@ -268,6 +283,6 @@ seff_exit:
     .asciz "GNU";
     .long 0xc0000000; /* GNU_PROPERTY_AARCH64_FEATURE_1_AND */
     .long 4; /* Four bytes of data */
-    .long 1; /* BTI is enabled */
+    .long 3; /* BTI and PAC enabled */
     .long 0; /* padding for 8 byte alignment */
     .popsection; /* end the section */

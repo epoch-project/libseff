@@ -22,7 +22,7 @@ LD  := $(shell which ld.gold)
 
 FLAGS.debug   := -O0
 FLAGS.release := -O3 -DNDEBUG
-FLAGS         := ${FLAGS.${BUILD}} -g -Wall -Wunreachable-code -mbranch-protection=bti -Wl,-zforce-bti,--fatal-warnings
+FLAGS         := ${FLAGS.${BUILD}} -g -Wall -Wunreachable-code -mbranch-protection=bti+pac-ret
 
 CFLAGSCOMMON := $(FLAGS) -pedantic -pthread \
 	-Wno-gnu-empty-struct \

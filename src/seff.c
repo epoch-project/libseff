@@ -90,6 +90,14 @@ bool seff_coroutine_init(seff_coroutine_t *k, seff_start_fun_t *fn, void *arg) {
 }
 
 E __attribute__((noreturn, no_split_stack)) void coroutine_prelude(void);
+#ifdef SEFF_ARCH_x86_64
+static inline void *prepare_ip(void (*f)(void), void *sp) {
+    return (void *)f;
+}
+#else
+E void *prepare_ip(void (*f)(void), void *sp);
+#endif
+
 bool seff_coroutine_init_sized(
     seff_coroutine_t *k, seff_start_fun_t *fn, void *arg, size_t frame_size) {
     char *rsp;
@@ -103,7 +111,7 @@ bool seff_coroutine_init_sized(
     k->frame_ptr = stack;
     k->resume_point.rsp = (void *)rsp;
     k->resume_point.rbp = NULL;
-    k->resume_point.ip = (void *)coroutine_prelude;
+    k->resume_point.ip = prepare_ip(coroutine_prelude, (void *)rsp);
 #ifdef STACK_POLICY_SEGMENTED
     void *stack_top = rsp - frame_size - overhead;
     k->resume_point.stack_top = stack_top;
